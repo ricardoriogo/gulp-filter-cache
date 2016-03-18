@@ -2,6 +2,7 @@
 var fs      = require('fs');
 var path    = require('path');
 var gutil   = require('gulp-util');
+var crypto  = require('crypto');
 var through = require('through2');
 
 function FilterCache(options){
@@ -27,33 +28,44 @@ FilterCache.prototype.checkFile = function(file) {
   var filepath = path.dirname(file.path),
 	  filename = path.basename(file.path);
 
-	  if(typeof _this._cache[filepath] == 'undefined') _this._cache[filepath] = {};
+  if(typeof _this._cache[filepath] == 'undefined') _this._cache[filepath] = {};
 
-  var cache = _this._cache[filepath][filename],
-      stat = file.stat && file.stat.mtime.getTime();
+  var cache = typeof _this._cache[filepath][filename] != 'undefined' ? _this._cache[filepath][filename] : false;
+  
+  if(_this._method == 'time'){
+    var stat = file.stat && file.stat.mtime.getTime();
+  } else {
+  	var stat = _this.hash(file.contents.toString());
+  }
 
   // filter matching files
   if (cache && stat && cache === stat) return false;
   
-  if (file.path && stat) this._cache[filepath][filename] = stat;
+  if (stat) _this._cache[filepath][filename] = stat;
   
   return true;
+};
+
+FilterCache.prototype.hash = function(content){
+  var hash = crypto.createHash('md5');
+  hash.update(content);
+  return hash.digest('hex');
 };
 
 FilterCache.prototype.filter = function() {
   var _this = this;
 
   // update cache
-  function transform(file, enc, callback) {
+  function filter(file, enc, callback) {
   	if (file.isNull()) {
-		callback(null, file);
-		return;
-	}
+			callback(null, file);
+			return;
+		}
 
-	if (file.isStream()) {
-		callback(new gutil.PluginError('gulp-filter-cache', 'Streaming not supported'));
-		return;
-	}
+		if (file.isStream()) {
+			callback(new gutil.PluginError('gulp-filter-cache', 'Streaming not supported'));
+			return;
+		}
 
     if(_this.checkFile(file)) this.push(file);
     
@@ -65,7 +77,7 @@ FilterCache.prototype.filter = function() {
     fs.writeFile(_this._cacheFile, JSON.stringify(_this._cache), callback);
   }
 
-  return through.obj(transform, flush);
+  return through.obj(filter, flush);
 };
 
 module.exports = function(options){
