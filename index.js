@@ -6,19 +6,16 @@ var crypto  = require('crypto');
 var through = require('through2');
 
 function FilterCache(options){
-	var options = options || {};
-	this._cacheFile = options.cacheFile || path.normalize(__dirname + '/../.filter-cache');
-	this._method = typeof options.method != 'undefined' && options.method == 'time' ? 'time' : 'hash';
-	
-	try {
-		this._cache = JSON.parse(fs.readFileSync(this._cacheFile, 'utf8'));
-	} catch (err) {
-		this._cache = {};
-	}
-};
+  var options = options || {};
+  this._cacheFile = options.cacheFile || path.normalize(__dirname + '/../.filter-cache');
+  this._method = typeof options.method != 'undefined' && options.method == 'time' ? 'time' : 'hash';
 
-// Check file
-// Return callback or save to cache and add to stream
+  try {
+    this._cache = JSON.parse(fs.readFileSync(this._cacheFile, 'utf8'));
+  } catch (err) {
+    this._cache = {};
+  }
+};
 
 FilterCache.prototype.checkFile = function(file) {
   var _this = this;
@@ -26,7 +23,7 @@ FilterCache.prototype.checkFile = function(file) {
   if(! file.isBuffer()) return false;
 
   var filepath = path.dirname(file.path),
-	  filename = path.basename(file.path);
+  filename = path.basename(file.path);
 
   if(typeof _this._cache[filepath] == 'undefined') _this._cache[filepath] = {};
 
@@ -35,7 +32,7 @@ FilterCache.prototype.checkFile = function(file) {
   if(_this._method == 'time'){
     var stat = file.stat && file.stat.mtime.getTime();
   } else {
-  	var stat = _this.hash(file.contents.toString());
+    var stat = _this.hash(file.contents.toString());
   }
 
   // filter matching files
@@ -55,24 +52,22 @@ FilterCache.prototype.hash = function(content){
 FilterCache.prototype.filter = function() {
   var _this = this;
 
-  // update cache
   function filter(file, enc, callback) {
-  	if (file.isNull()) {
-			callback(null, file);
-			return;
-		}
+    if (file.isNull()) {
+      callback();
+      return;
+    }
 
-		if (file.isStream()) {
-			callback(new gutil.PluginError('gulp-filter-cache', 'Streaming not supported'));
-			return;
-		}
+    if (file.isStream()) {
+      callback(new gutil.PluginError('gulp-filter-cache', 'Streaming not supported'));
+      return;
+    }
 
     if(_this.checkFile(file)) this.push(file);
-    
+
     return callback();
   }
 
-  // flush cache to disk
   function flush(callback) {
     fs.writeFile(_this._cacheFile, JSON.stringify(_this._cache), callback);
   }
@@ -83,30 +78,3 @@ FilterCache.prototype.filter = function() {
 module.exports = function(options){
 	return new FilterCache(options);
 };
-
-/*module.exports = function (options) {
-	if (!options.foo) {
-		throw new gutil.PluginError('gulp-filter-cache', '`foo` required');
-	}
-
-	return through.obj(function (file, enc, cb) {
-		if (file.isNull()) {
-			cb(null, file);
-			return;
-		}
-
-		if (file.isStream()) {
-			cb(new gutil.PluginError('gulp-filter-cache', 'Streaming not supported'));
-			return;
-		}
-
-		try {
-			file.contents = new Buffer(someModule(file.contents.toString(), options));
-			this.push(file);
-		} catch (err) {
-			this.emit('error', new gutil.PluginError('gulp-filter-cache', err));
-		}
-
-		cb();
-	});
-};*/
