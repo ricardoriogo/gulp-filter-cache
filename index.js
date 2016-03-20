@@ -9,6 +9,7 @@ function FilterCache(options){
   var options = options || {};
   this._cacheFile = options.cacheFile || path.normalize(__dirname + '/../.filter-cache');
   this._method = typeof options.method != 'undefined' && options.method == 'time' ? 'time' : 'hash';
+  this._ignoreFolders = typeof options.ignoreFolders != 'undefined' && options.ignoreFolders ? true : false;
 
   try {
     this._cache = JSON.parse(fs.readFileSync(this._cacheFile, 'utf8'));
@@ -54,7 +55,7 @@ FilterCache.prototype.filter = function() {
 
   function filter(file, enc, callback) {
     if (file.isNull()) {
-      callback();
+      callback(null, (_this._ignoreFolders ? null : file));
       return;
     }
 
