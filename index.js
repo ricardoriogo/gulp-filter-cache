@@ -5,57 +5,59 @@ var gutil   = require('gulp-util');
 var crypto  = require('crypto');
 var through = require('through2');
 
-function FilterCache(options){
+module.exports = function(options) {
+
   var options = options || {};
-  this._cacheFile = options.cacheFile || path.normalize(__dirname + '/../.filter-cache');
-  this._method = typeof options.method != 'undefined' && options.method == 'time' ? 'time' : 'hash';
-  this._ignoreFolders = typeof options.ignoreFolders != 'undefined' && options.ignoreFolders ? true : false;
+  var _cacheFile = options.cacheFile || path.normalize(__dirname + '/../.filter-cache');
+  var _method = typeof options.method != 'undefined' && options.method == 'hash' 
+    ? 'hash' 
+    : 'time';
+  var _ignoreFolders = typeof options.ignoreFolders != 'undefined' && options.ignoreFolders 
+    ? true 
+    : false;
+  var _cache;
 
   try {
-    this._cache = JSON.parse(fs.readFileSync(this._cacheFile, 'utf8'));
+    _cache = JSON.parse(fs.readFileSync(_cacheFile, 'utf8'));
   } catch (err) {
-    this._cache = {};
-  }
-};
-
-FilterCache.prototype.checkFile = function(file) {
-  var _this = this;
-
-  if(! file.isBuffer()) return false;
-
-  var filepath = path.dirname(file.path),
-  filename = path.basename(file.path);
-
-  if(typeof _this._cache[filepath] == 'undefined') _this._cache[filepath] = {};
-
-  var cache = typeof _this._cache[filepath][filename] != 'undefined' ? _this._cache[filepath][filename] : false;
-  
-  if(_this._method == 'time'){
-    var stat = file.stat && file.stat.mtime.getTime();
-  } else {
-    var stat = _this.hash(file.contents.toString());
+    _cache = {};
   }
 
-  // filter matching files
-  if (cache && stat && cache === stat) return false;
-  
-  if (stat) _this._cache[filepath][filename] = stat;
-  
-  return true;
-};
+  function checkFile(file) {
+    if(! file.isBuffer()) return false;
 
-FilterCache.prototype.hash = function(content){
-  var hash = crypto.createHash('md5');
-  hash.update(content);
-  return hash.digest('hex');
-};
+    var filepath = path.dirname(file.path);
+    var filename = path.basename(file.path);
 
-FilterCache.prototype.filter = function() {
-  var _this = this;
+    if (typeof _cache[filepath] == 'undefined') _cache[filepath] = {};
+
+    var cache = typeof _cache[filepath][filename] != 'undefined' 
+      ? _cache[filepath][filename] 
+      : false;
+    
+    if (_method == 'time') {
+      var stat = file.stat && file.stat.mtime.getTime();
+    } else {
+      var stat = hash(file.contents.toString());
+    }
+
+    // filter matching files
+    if (cache && stat && cache === stat) return false;
+    
+    if (stat) _cache[filepath][filename] = stat;
+    
+    return true;
+  }
+
+  function hash(content){
+    var hash = crypto.createHash('md5');
+    hash.update(content);
+    return hash.digest('hex');
+  }
 
   function filter(file, enc, callback) {
     if (file.isNull()) {
-      callback(null, (_this._ignoreFolders ? null : file));
+      callback(null, (_ignoreFolders ? null : file));
       return;
     }
 
@@ -64,18 +66,21 @@ FilterCache.prototype.filter = function() {
       return;
     }
 
-    if(_this.checkFile(file)) this.push(file);
+    if(checkFile(file)) this.push(file);
 
     return callback();
   }
 
   function flush(callback) {
-    fs.writeFile(_this._cacheFile, JSON.stringify(_this._cache), callback);
+    fs.writeFile(_cacheFile, JSON.stringify(_cache), callback);
   }
 
-  return through.obj(filter, flush);
-};
+  var ret = through.obj(filter, flush);
 
-module.exports = function(options){
-	return new FilterCache(options);
+  // For tests, it exposes the _cache variable
+  ret.instance = {
+    cache: _cache
+  };
+
+  return ret;
 };

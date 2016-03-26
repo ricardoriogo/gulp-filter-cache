@@ -9,6 +9,7 @@ var expect = chai.expect;
 
 describe('gulp-filter-cache', function(){
   var filterCacheHash = filterCache({
+    method:'hash',
     cacheFile: './.filter-cache1'
   });
   
@@ -17,56 +18,55 @@ describe('gulp-filter-cache', function(){
     cacheFile: './.filter-cache2'
   });
   
-  var d1 = new Date('2016-01-01'),
-  d2 = new Date('2016-02-01'),
-  d3 = new Date('2016-03-01'),
-  file1, file2, file3;
+  var d1 = new Date('2016-01-01');
+  var d2 = new Date('2016-02-01');
+  var d3 = new Date('2016-03-01');
 
-  file1 = new gutil.File({
+  var file1 = new gutil.File({
     path: 'path/file1',
     stat: {mtime: d1},
     contents: new Buffer('The file contents')
   });
   
-  file2 = new gutil.File({
+  var file2 = new gutil.File({
     path: 'path/file2',
     stat: {mtime: d2},
     contents: new Buffer('The file contents2')
   });
   
-  file3 = new gutil.File({
+  var file3 = new gutil.File({
     path: 'path/file3',
     stat: {mtime: d3},
     contents: new Buffer('The file contents3')
   });
   
   it('Should populate the cache using hash', function (done) {
-    var stream = filterCacheHash.filter();
+    var instance = filterCacheHash.instance;
     
-    stream.on('finish', function() {
-      expect(filterCacheHash._cache['path']).to.have.keys(['file1', 'file2', 'file3']);
-      assert.strictEqual(filterCacheHash._cache['path']['file1'], '9d4b55435f3d1411d6db22f0a9741de3');
+    filterCacheHash.on('finish', function() {
+      expect(instance['cache']['path']).to.have.keys(['file1', 'file2', 'file3']);
+      assert.strictEqual(instance['cache']['path']['file1'], '9d4b55435f3d1411d6db22f0a9741de3');
       done();
     });
     
-    stream.write(file1);
-    stream.write(file2);
-    stream.write(file3);
-    stream.end();
+    filterCacheHash.write(file1);
+    filterCacheHash.write(file2);
+    filterCacheHash.write(file3);
+    filterCacheHash.end();
   });
   
   it('Should populate the cache using mtime', function (done) {
-    var stream = filterCacheMtime.filter();
+    var instance = filterCacheMtime.instance;
     
-    stream.on('finish', function() {
-      expect(filterCacheMtime._cache['path']).to.have.keys(['file1', 'file2', 'file3']);
-      assert.strictEqual(filterCacheMtime._cache['path']['file1'], 1451606400000);
+    filterCacheMtime.on('finish', function() {
+      expect(instance.cache['path']).to.have.keys(['file1', 'file2', 'file3']);
+      assert.strictEqual(instance.cache['path']['file1'], 1451606400000);
       done();
     });
     
-    stream.write(file1);
-    stream.write(file2);
-    stream.write(file3);
-    stream.end();
+    filterCacheMtime.write(file1);
+    filterCacheMtime.write(file2);
+    filterCacheMtime.write(file3);
+    filterCacheMtime.end();
   });
 });
