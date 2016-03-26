@@ -12,10 +12,12 @@ module.exports = function(options) {
   var _method = typeof options.method != 'undefined' && options.method == 'hash' 
     ? 'hash' 
     : 'time';
-  var _ignoreFolders = typeof options.ignoreFolders != 'undefined' && options.ignoreFolders 
+  var _onlyFiles = typeof options.onlyFiles != 'undefined' && options.onlyFiles 
     ? true 
     : false;
   var _cache;
+  var _countNew = 0;
+  var _countModified = 0;
 
   try {
     _cache = JSON.parse(fs.readFileSync(_cacheFile, 'utf8'));
@@ -57,7 +59,7 @@ module.exports = function(options) {
 
   function filter(file, enc, callback) {
     if (file.isNull()) {
-      callback(null, (_ignoreFolders ? null : file));
+      callback(null, (_onlyFiles ? null : file));
       return;
     }
 
