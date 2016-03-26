@@ -29,7 +29,7 @@ gulp.task('ftp-deploy', function () {
     });
 
     return gulp.src('public/**/*')
-        .pipe(gulp-file-cache())
+        .pipe(fileCache())
         .pipe(conn.dest('/remote-folder'));
 });
 ```
