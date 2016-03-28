@@ -5,7 +5,7 @@ var gutil   = require('gulp-util');
 var crypto  = require('crypto');
 var through = require('through2');
 
-module.exports = function(options) {
+var filterCache = function(options) {
 
   var options = options || {};
   var _cacheFile = options.cacheFile || path.normalize(__dirname + '/../.filter-cache');
@@ -85,4 +85,8 @@ module.exports = function(options) {
   };
 
   return ret;
+};
+
+module.exports = function(options){
+  return new filterCache(options);
 };
