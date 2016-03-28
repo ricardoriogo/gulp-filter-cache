@@ -1,6 +1,6 @@
 {
   "name": "gulp-filter-cache",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Creates a local cache file to keep simple and fast to use only new or updated files",
   "license": "MIT",
   "repository": "ricardoriogo/gulp-filter-cache",
