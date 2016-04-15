@@ -93,18 +93,18 @@ describe('gulp-filter-cache', function(){
   });
   
   it('Should populate the cache using saveCache()', function (done) {
-    var cache = filterCacheSave.instance.cache();
+    var cache = filterCacheSave.instance.cache;
     
     filterCacheSave.on('finish', function() {
       expect(filterCacheSave.instance.oldCache['path']).to.not.have.keys(['file1', 'file2', 'file3']);
       expect(filterCacheSave.instance.newCache['path']).to.have.keys(['file1', 'file2', 'file3']);
       
-      var saving = filterCacheSave.instance.saveCache();
+      var saving = filterCacheSave.saveCache();
       
       saving.on('finish', function() {
         expect(filterCacheSave.instance.oldCache['path']).to.have.keys(['file2', 'file3']);
         expect(filterCacheSave.instance.newCache['path']).to.have.keys(['file1', 'file2', 'file3']);
-        expect(filterCacheSave.instance.oldCache['path']).to.have.keys(['file2', 'file3']);
+        expect(cache()['path']).to.have.keys(['file1', 'file2', 'file3']);
         
         assert.strictEqual(filterCacheSave.instance.cache()['path']['file1'], 1451606400000);
         done();

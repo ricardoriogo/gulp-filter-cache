@@ -34,6 +34,8 @@ var filterCache = function(options) {
     if(! file.isBuffer()) return false;
 
     var filepath = path.dirname(path.normalize(file.path));
+    
+    //if(filepath.search(new RegExp(path.normalize(file.cwd))))
     filepath = filepath.replace(file.cwd, '');
     filepath = filepath.replace(file.base, '');
 
@@ -142,9 +144,10 @@ var filterCache = function(options) {
   ret.instance = {
     cache: getAllCache,
     newCache: _newCache,
-    oldCache: _oldCache,
-    saveCache: saveCache
+    oldCache: _oldCache
   };
+  
+  ret.saveCache = saveCache;
 
   return ret;
 };
