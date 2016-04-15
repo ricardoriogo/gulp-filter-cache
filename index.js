@@ -4,6 +4,7 @@ var path    = require('path');
 var gutil   = require('gulp-util');
 var crypto  = require('crypto');
 var through = require('through2');
+var extend  = require('deep-extend');
 
 var filterCache = function(options) {
 
@@ -12,29 +13,37 @@ var filterCache = function(options) {
   var _method = typeof options.method != 'undefined' && options.method == 'hash' 
     ? 'hash' 
     : 'time';
+  var _confirmToSave = typeof options.confirmToSave != 'undefined' && options.confirmToSave 
+    ? true 
+    : false;
   var _onlyFiles = typeof options.onlyFiles != 'undefined' && options.onlyFiles 
     ? true 
     : false;
-  var _cache;
+  var _oldCache;
+  var _newCache = {};
   var _countNew = 0;
   var _countModified = 0;
 
   try {
-    _cache = JSON.parse(fs.readFileSync(_cacheFile, 'utf8'));
+    _oldCache = JSON.parse(fs.readFileSync(_cacheFile, 'utf8'));
   } catch (err) {
-    _cache = {};
+    _oldCache = {};
   }
 
   function checkFile(file) {
     if(! file.isBuffer()) return false;
 
-    var filepath = path.dirname(file.path);
+    var filepath = path.dirname(path.normalize(file.path));
+    filepath = filepath.replace(file.cwd, '');
+    filepath = filepath.replace(file.base, '');
+
     var filename = path.basename(file.path);
 
-    if (typeof _cache[filepath] == 'undefined') _cache[filepath] = {};
+    if (typeof _oldCache[filepath] == 'undefined') _oldCache[filepath] = {};
+    if (typeof _newCache[filepath] == 'undefined') _newCache[filepath] = {};
 
-    var cache = typeof _cache[filepath][filename] != 'undefined' 
-      ? _cache[filepath][filename] 
+    var cache = typeof _oldCache[filepath][filename] != 'undefined' 
+      ? _oldCache[filepath][filename] 
       : false;
     
     if (_method == 'time') {
@@ -46,7 +55,25 @@ var filterCache = function(options) {
     // filter matching files
     if (cache && stat && cache === stat) return false;
     
-    if (stat) _cache[filepath][filename] = stat;
+    if (stat) _newCache[filepath][filename] = stat;
+    
+    return true;
+  }
+
+  function saveFile(file) {
+    if(! file.isBuffer()) return false;
+
+    var filepath = path.dirname(path.normalize(file.path));
+    filepath = filepath.replace(file.cwd, '');
+    filepath = filepath.replace(file.base, '');
+
+    var filename = path.basename(file.path);
+
+    var cache = typeof _newCache[filepath][filename] != 'undefined' 
+      ? _newCache[filepath][filename] 
+      : false;
+    
+    _oldCache[filepath][filename] = cache;
     
     return true;
   }
@@ -74,14 +101,49 @@ var filterCache = function(options) {
   }
 
   function flush(callback) {
-    fs.writeFile(_cacheFile, JSON.stringify(_cache), callback);
+    if(! _confirmToSave) {
+      _oldCache = getAllCache();
+      fs.writeFile(_cacheFile, JSON.stringify(_oldCache), callback);
+    } else {
+      callback();
+    }
+  }
+
+  function saveStream(file, enc, callback){
+    if (file.isNull()) {
+      callback(null, (_onlyFiles ? null : file));
+      return;
+    }
+
+    if (file.isStream()) {
+      callback(new gutil.PluginError('gulp-filter-cache', 'Streaming not supported'));
+      return;
+    }
+    
+    if(saveFile(file)) this.push(file);
+    return callback();
+  }
+
+  function saveFlush(callback){
+    fs.writeFile(_cacheFile, JSON.stringify(_oldCache), callback);
+  }
+
+  function saveCache() {
+    return through.obj(saveStream, saveFlush);
+  }
+  
+  function getAllCache() {
+    return extend(_oldCache, _newCache);
   }
 
   var ret = through.obj(filter, flush);
 
-  // For tests, it exposes the _cache variable
+  // For tests proposes
   ret.instance = {
-    cache: _cache
+    cache: getAllCache,
+    newCache: _newCache,
+    oldCache: _oldCache,
+    saveCache: saveCache
   };
 
   return ret;

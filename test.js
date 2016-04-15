@@ -4,6 +4,7 @@ var gutil = require('gulp-util');
 var chai = require('chai');
 var crypto = require('crypto');
 var filterCache = require('./');
+var fs = require('fs');
 
 var expect = chai.expect;
 
@@ -13,9 +14,16 @@ describe('gulp-filter-cache', function(){
     cacheFile: './.filter-cache1'
   });
   
+  var filterCacheHashSecondCall;
+  
   var filterCacheMtime = filterCache({
     method:'time',
     cacheFile: './.filter-cache2'
+  });
+  
+  var filterCacheSave = filterCache({
+    cacheFile: './.filter-cache3',
+    confirmToSave: true
   });
   
   var d1 = new Date('2016-01-01');
@@ -41,11 +49,11 @@ describe('gulp-filter-cache', function(){
   });
   
   it('Should populate the cache using hash', function (done) {
-    var instance = filterCacheHash.instance;
+    var cache = filterCacheHash.instance.cache();
     
     filterCacheHash.on('finish', function() {
-      expect(instance['cache']['path']).to.have.keys(['file1', 'file2', 'file3']);
-      assert.strictEqual(instance['cache']['path']['file1'], '9d4b55435f3d1411d6db22f0a9741de3');
+      expect(cache['path']).to.have.keys(['file1', 'file2', 'file3']);
+      assert.strictEqual(cache['path']['file1'], '9d4b55435f3d1411d6db22f0a9741de3');
       done();
     });
     
@@ -55,12 +63,26 @@ describe('gulp-filter-cache', function(){
     filterCacheHash.end();
   });
   
+  it('Should have keys of previous call', function (done) {
+    filterCacheHashSecondCall = filterCache({
+      method:'hash',
+      cacheFile: './.filter-cache1'
+    });
+    
+    filterCacheHashSecondCall.end();
+    
+    expect(filterCacheHashSecondCall.instance.oldCache['path']).to.have.keys(['file1', 'file2', 'file3']);
+    assert.strictEqual(filterCacheHashSecondCall.instance.oldCache['path']['file1'], '9d4b55435f3d1411d6db22f0a9741de3');
+    
+    done();
+  });
+  
   it('Should populate the cache using mtime', function (done) {
-    var instance = filterCacheMtime.instance;
+    var cache = filterCacheMtime.instance.cache();
     
     filterCacheMtime.on('finish', function() {
-      expect(instance.cache['path']).to.have.keys(['file1', 'file2', 'file3']);
-      assert.strictEqual(instance.cache['path']['file1'], 1451606400000);
+      expect(cache['path']).to.have.keys(['file1', 'file2', 'file3']);
+      assert.strictEqual(cache['path']['file1'], 1451606400000);
       done();
     });
     
@@ -68,5 +90,39 @@ describe('gulp-filter-cache', function(){
     filterCacheMtime.write(file2);
     filterCacheMtime.write(file3);
     filterCacheMtime.end();
+  });
+  
+  it('Should populate the cache using saveCache()', function (done) {
+    var cache = filterCacheSave.instance.cache();
+    
+    filterCacheSave.on('finish', function() {
+      expect(filterCacheSave.instance.oldCache['path']).to.not.have.keys(['file1', 'file2', 'file3']);
+      expect(filterCacheSave.instance.newCache['path']).to.have.keys(['file1', 'file2', 'file3']);
+      
+      var saving = filterCacheSave.instance.saveCache();
+      
+      saving.on('finish', function() {
+        expect(filterCacheSave.instance.oldCache['path']).to.have.keys(['file2', 'file3']);
+        expect(filterCacheSave.instance.newCache['path']).to.have.keys(['file1', 'file2', 'file3']);
+        expect(filterCacheSave.instance.oldCache['path']).to.have.keys(['file2', 'file3']);
+        
+        assert.strictEqual(filterCacheSave.instance.cache()['path']['file1'], 1451606400000);
+        done();
+      });
+      
+      saving.write(file2);
+      saving.write(file3);
+      saving.end();
+      
+      fs.unlink('./.filter-cache1');
+      fs.unlink('./.filter-cache2');
+      fs.unlink('./.filter-cache3');
+      
+    });
+    
+    filterCacheSave.write(file1);
+    filterCacheSave.write(file2);
+    filterCacheSave.write(file3);
+    filterCacheSave.end();
   });
 });
