@@ -68,6 +68,43 @@ Default: `false`
 Set it to `true` if you don't want to use folders on your stream. All empty folders will be ignored by filter.
 
 
+##### confirmToSave
+
+Type: `bool`  
+Default: `false`
+
+Set it to `true` if you want to save only processed files to cache. You must pipe to filterCache.saveCache() after modifications (see below).
+
+```js
+var gulp = require('gulp');
+var fileCache = require('gulp-filter-cache');
+var ftp = require('vinyl-ftp');
+
+gulp.task('ftp-deploy', function () {
+    
+    var conn = ftp.create({
+        host:     'mywebsite.tld',
+        user:     'me',
+        password: 'mypass',
+    });
+    
+    var cache = fileCache({
+        confirmToSave: true
+    })
+
+    return gulp.src('public/**/*')
+        .pipe(cache)
+        .pipe(
+            conn
+                .dest('/remote-folder')
+                .on('error', function(){
+                    console.log('Oops! Error on upload! Only processed files will be saved on cache.');
+                })
+            )
+        .pipe(cache.saveCache());
+});
+```
+
 
 ## License
 
