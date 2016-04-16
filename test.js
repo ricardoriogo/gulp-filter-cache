@@ -63,20 +63,6 @@ describe('gulp-filter-cache', function(){
     filterCacheHash.end();
   });
   
-  it('Should have keys of previous call', function (done) {
-    filterCacheHashSecondCall = filterCache({
-      method:'hash',
-      cacheFile: './.filter-cache1'
-    });
-    
-    filterCacheHashSecondCall.end();
-    
-    expect(filterCacheHashSecondCall.instance.oldCache['path']).to.have.keys(['file1', 'file2', 'file3']);
-    assert.strictEqual(filterCacheHashSecondCall.instance.oldCache['path']['file1'], '9d4b55435f3d1411d6db22f0a9741de3');
-    
-    done();
-  });
-  
   it('Should populate the cache using mtime', function (done) {
     var cache = filterCacheMtime.instance.cache();
     
@@ -90,6 +76,20 @@ describe('gulp-filter-cache', function(){
     filterCacheMtime.write(file2);
     filterCacheMtime.write(file3);
     filterCacheMtime.end();
+  });
+  
+  it('Should have keys of a previous call', function (done) {
+    filterCacheHashSecondCall = filterCache({
+      method:'hash',
+      cacheFile: './.filter-cache1'
+    });
+    
+    filterCacheHashSecondCall.end();
+    
+    expect(filterCacheHashSecondCall.instance.oldCache['path']).to.have.keys(['file1', 'file2', 'file3']);
+    assert.strictEqual(filterCacheHashSecondCall.instance.oldCache['path']['file1'], '9d4b55435f3d1411d6db22f0a9741de3');
+    
+    done();
   });
   
   it('Should populate the cache using saveCache()', function (done) {
