@@ -81,7 +81,7 @@ describe('gulp-filter-cache', function(){
   it('Should have keys of a previous call', function (done) {
     filterCacheHashSecondCall = filterCache({
       method:'hash',
-      cacheFile: './.filter-cache1'
+      cacheFile: './.filter-cache'
     });
     
     filterCacheHashSecondCall.end();
