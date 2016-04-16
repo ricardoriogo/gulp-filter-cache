@@ -1,4 +1,5 @@
 'use strict';
+
 var fs      = require('fs');
 var path    = require('path');
 var gutil   = require('gulp-util');
@@ -33,12 +34,7 @@ var filterCache = function(options) {
   function checkFile(file) {
     if(! file.isBuffer()) return false;
 
-    var filepath = path.dirname(path.normalize(file.path));
-    
-    //if(filepath.search(new RegExp(path.normalize(file.cwd))))
-    filepath = filepath.replace(file.cwd, '');
-    filepath = filepath.replace(file.base, '');
-
+    var filepath = cleanPath(file);
     var filename = path.basename(file.path);
 
     if (typeof _oldCache[filepath] == 'undefined') _oldCache[filepath] = {};
@@ -65,10 +61,7 @@ var filterCache = function(options) {
   function saveFile(file) {
     if(! file.isBuffer()) return false;
 
-    var filepath = path.dirname(path.normalize(file.path));
-    filepath = filepath.replace(file.cwd, '');
-    filepath = filepath.replace(file.base, '');
-
+    var filepath = cleanPath(file);
     var filename = path.basename(file.path);
 
     var cache = typeof _newCache[filepath][filename] != 'undefined' 
@@ -136,6 +129,22 @@ var filterCache = function(options) {
   
   function getAllCache() {
     return extend(_oldCache, _newCache);
+  }
+  
+  function replaceAll(str, search, replacement) {
+    return str.split(search).join(replacement);
+  }
+  
+  function cleanPath(file){
+    var filepath = path.dirname(path.normalize(file.path));
+    
+    if(filepath.search(new RegExp(replaceAll(path.normalize(file.cwd), '\\', '\\\\'))) === 0)
+      filepath = filepath.replace(file.cwd, '');
+      
+    if(filepath.search(new RegExp(replaceAll(path.normalize(file.base), '\\', '\\\\'))) === 0)
+      filepath = filepath.replace(file.base, '');
+      
+    return filepath;
   }
 
   var ret = through.obj(filter, flush);
